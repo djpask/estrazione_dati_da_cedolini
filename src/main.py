@@ -18,8 +18,8 @@ def main():
     
     tutti_i_dati = []
     
-    # Scorre tutti i file nella cartella di input
-    for filename in os.listdir(input_dir):
+    # Scorre tutti i file nella cartella di input in ordine alfabetico
+    for filename in sorted(os.listdir(input_dir)):
         if filename.lower().endswith('.pdf'):
             file_path = os.path.join(input_dir, filename)
             print(f"Elaborazione in corso: {filename} ...")

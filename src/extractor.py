@@ -22,7 +22,15 @@ def estrai_dati(file_path):
         "Livello": None,
         "Qualifica": None,
         "Paga_Base": None,
+        "Premio_Risultato": None,
         "Totale_Lordo": None,
+        "Rata_Addizionale_Regionale": None,
+        "Rata_Addizionale_Comunale": None,
+        "Acconto_Addizionale_Comunale": None,
+        "Contributo_INPDAP_8_8": None,
+        "Addizionale_INPDAP_1": None,
+        "Contributo_Fondo_Credito_0_35": None,
+        "Totale_Contributi_Sociali": None,
         "Totale_Trattenute": None,
         "Netto_Busta": None,
         "IBAN": None
@@ -93,9 +101,43 @@ def estrai_dati(file_path):
                     if match_liv:
                         dati["Livello"] = match_liv.group(1)
                         
-                # 6. Totale Lordo
-                if "TOTALE LORDO" in line:
-                    # Di solito i valori si trovano 1 o 2 righe sotto
+                # 6. Premio Risultato
+                if "PREMIO RIS" in line:
+                    match_premio = re.search(r"([\d\.]+,\d{2})\s*$", line.strip())
+                    if match_premio and not dati["Premio_Risultato"]:
+                        dati["Premio_Risultato"] = match_premio.group(1)
+
+                # 7. Addizionali e Acconti
+                if "ADDIZ.REGIONALE" in line or "ADDIZIONALE REGIONALE" in line:
+                    match_reg = re.search(r"([\d\.]+,\d{2})\s*$", line.strip())
+                    if match_reg and not dati["Rata_Addizionale_Regionale"]:
+                        dati["Rata_Addizionale_Regionale"] = match_reg.group(1)
+                
+                if "ADD.COMUNALE" in line or "ADDIZIONALE COMUNALE" in line:
+                    match_com = re.search(r"([\d\.]+,\d{2})\s*$", line.strip())
+                    if match_com:
+                        if "ACCONTO" in line:
+                            dati["Acconto_Addizionale_Comunale"] = match_com.group(1)
+                        elif not dati["Rata_Addizionale_Comunale"]:
+                            dati["Rata_Addizionale_Comunale"] = match_com.group(1)
+
+                # 7. Contributi
+                if "TOTALE CONTRIBUTI SOCIALI" in line:
+                    # I valori si trovano tipicamente nella riga successiva
+                    if i+1 < len(lines):
+                        # La riga successiva contiene i valori: Totale Lordo, Imponibile, Contributo 1, Contributo 2, Contributo 3, ..., Totale Contributi
+                        # Es: "        14.162,31 14.162,00  1246,26   94,77   49,57                    1.390,60"
+                        matches_contributi = re.findall(r"([\d\.]+,\d{2})", lines[i+1])
+                        if len(matches_contributi) >= 6:
+                            if not dati["Totale_Lordo"]:
+                                dati["Totale_Lordo"] = matches_contributi[0]
+                            dati["Contributo_INPDAP_8_8"] = matches_contributi[2]
+                            dati["Addizionale_INPDAP_1"] = matches_contributi[3]
+                            dati["Contributo_Fondo_Credito_0_35"] = matches_contributi[4]
+                            dati["Totale_Contributi_Sociali"] = matches_contributi[-1]
+
+                # 8. Totale Lordo (Fallback se non trovato con i contributi)
+                if "TOTALE LORDO" in line and not dati["Totale_Lordo"]:
                     for j in range(1, 3):
                         if i+j < len(lines):
                             match_lordo = re.search(r"([\d\.]+,\d{2})", lines[i+j])

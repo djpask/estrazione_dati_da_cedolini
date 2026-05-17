@@ -1,0 +1,3 @@
+# Aggiungi qui le librerie necessarie (es. PyPDF2, pdfplumber, pandas, etc.)
+# pdfplumber==0.10.3
+# pandas==2.1.1

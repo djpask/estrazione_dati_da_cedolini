@@ -31,8 +31,17 @@ def estrai_dati(file_path):
         "Addizionale_INPDAP_1": None,
         "Contributo_Fondo_Credito_0_35": None,
         "Totale_Contributi_Sociali": None,
+        "Imponibile_IRPEF": None,
+        "IRPEF_Lorda": None,
+        "Totale_Trattenute_IRPEF": None,
+        "Trattenuta_Sindacale": None,
+        "Arrotondamento_Precedente": None,
+        "Trattenute_Corpo": None,
         "Totale_Trattenute": None,
+        "Arrotondamento_Attuale": None,
         "Netto_Busta": None,
+        "Imponibile_INAIL": None,
+        "TFR_Mese": None,
         "IBAN": None
     }
     
@@ -136,7 +145,41 @@ def estrai_dati(file_path):
                             dati["Contributo_Fondo_Credito_0_35"] = matches_contributi[4]
                             dati["Totale_Contributi_Sociali"] = matches_contributi[-1]
 
-                # 8. Totale Lordo (Fallback se non trovato con i contributi)
+                # 8. IRPEF e Trattenute (blocco contiguo)
+                if "IRPEF LORDA TOTALE DETRAZIONI TOTALE TRATTENUTE IRPEF" in line:
+                    if i+1 < len(lines):
+                        matches_irpef = re.findall(r"([\d\.]+,\d{2})", lines[i+1])
+                        if len(matches_irpef) >= 3:
+                            dati["Imponibile_IRPEF"] = matches_irpef[0]
+                            dati["IRPEF_Lorda"] = matches_irpef[1]
+                            dati["Totale_Trattenute_IRPEF"] = matches_irpef[2]
+                            
+                    if i+2 < len(lines):
+                        matches_tratt = re.findall(r"([\d\.]+,\d{2})", lines[i+2])
+                        if len(matches_tratt) >= 4:
+                            dati["Trattenuta_Sindacale"] = matches_tratt[0]
+                            dati["Arrotondamento_Precedente"] = matches_tratt[1]
+                            dati["Trattenute_Corpo"] = matches_tratt[2]
+                            dati["Totale_Trattenute"] = matches_tratt[3]
+
+                # 9. Netto Busta, Arrotondamento Attuale, Imponibile INAIL, TFR Mese
+                if "NETTO BUSTA" in line:
+                    for j in range(1, 4):
+                        if i+j < len(lines):
+                            matches_netto = re.findall(r"([\d\.]+,\d{2})", lines[i+j])
+                            if len(matches_netto) == 2:
+                                dati["Arrotondamento_Attuale"] = matches_netto[0]
+                                dati["Netto_Busta"] = matches_netto[1]
+                                
+                                # La riga successiva a questa contiene INAIL e TFR alla fine
+                                if i+j+1 < len(lines):
+                                    matches_inail = re.findall(r"([\d\.]+,\d{2})", lines[i+j+1])
+                                    if len(matches_inail) >= 2:
+                                        dati["Imponibile_INAIL"] = matches_inail[-2]
+                                        dati["TFR_Mese"] = matches_inail[-1]
+                                break
+
+                # 10. Totale Lordo (Fallback se non trovato con i contributi)
                 if "TOTALE LORDO" in line and not dati["Totale_Lordo"]:
                     for j in range(1, 3):
                         if i+j < len(lines):
@@ -145,25 +188,7 @@ def estrai_dati(file_path):
                                 dati["Totale_Lordo"] = match_lordo.group(1)
                                 break
                                 
-                # 7. Totale Trattenute
-                if "TOTALE TRATTENUTE" in line:
-                    for j in range(1, 3):
-                        if i+j < len(lines):
-                            match_tratt = re.search(r"([\d\.]+,\d{2})\s*$", lines[i+j])
-                            if match_tratt:
-                                dati["Totale_Trattenute"] = match_tratt.group(1)
-                                break
-                                
-                # 8. Netto Busta
-                if "NETTO BUSTA" in line:
-                    for j in range(1, 4):
-                        if i+j < len(lines):
-                            match_netto = re.search(r"([\d\.]+,\d{2})\s*$", lines[i+j])
-                            if match_netto:
-                                dati["Netto_Busta"] = match_netto.group(1)
-                                break
-                                
-                # 9. IBAN
+                # 11. IBAN
                 if not dati["IBAN"]:
                     match_iban = re.search(r"(IT\d{2}[A-Z]\d{22})", line)
                     if match_iban:
